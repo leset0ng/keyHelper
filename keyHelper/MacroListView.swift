@@ -38,6 +38,13 @@ struct MacroListView: View {
                     .buttonStyle(.bordered)
                 }
                 ToolbarItem(placement: .automatic) {
+                    SettingsLink {
+                        Label("Settings", systemImage: "gear")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                ToolbarItem(placement: .automatic) {
                     Button(action: toggleGlobalMonitoring) {
                         HStack(spacing: 4) {
                             Image(systemName: monitor.isMonitoring ? "stop.fill" : "play.fill")

@@ -1,0 +1,13 @@
+.DS_Store
+*.xcuserdata
+*.xcuserdatad
+DerivedData/
+Build/
+*.ipa
+*.app
+*.dSYM
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

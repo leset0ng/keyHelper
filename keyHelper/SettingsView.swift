@@ -9,6 +9,7 @@ import ServiceManagement
 struct SettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("hideDockIcon") private var hideDockIcon = false
+    @AppStorage("autoStartMonitoring") private var autoStartMonitoring = false
 
     var body: some View {
         TabView {
@@ -18,7 +19,7 @@ struct SettingsView: View {
                 }
         }
         .padding()
-        .frame(width: 420, height: 220)
+        .frame(width: 420, height: 250)
     }
 
     private var generalTab: some View {
@@ -33,6 +34,8 @@ struct SettingsView: View {
                     .onChange(of: hideDockIcon) { _, newValue in
                         NSApp.setActivationPolicy(newValue ? .accessory : .regular)
                     }
+
+                Toggle("Auto-start Monitoring", isOn: $autoStartMonitoring)
             } header: {
                 Text("General")
             }

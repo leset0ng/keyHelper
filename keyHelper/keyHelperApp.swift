@@ -45,6 +45,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if hideDock {
             NSApp.setActivationPolicy(.accessory)
         }
+
+        // Auto-start monitoring if enabled
+        let autoStart = UserDefaults.standard.bool(forKey: "autoStartMonitoring")
+        if autoStart {
+            GlobalKeyMonitor.shared.startMonitoring()
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

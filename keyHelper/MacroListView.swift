@@ -38,6 +38,15 @@ struct MacroListView: View {
                     .buttonStyle(.bordered)
                 }
                 ToolbarItem(placement: .automatic) {
+                    Button {
+                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    } label: {
+                        Label("Settings", systemImage: "gear")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                ToolbarItem(placement: .automatic) {
                     Button(action: toggleGlobalMonitoring) {
                         HStack(spacing: 4) {
                             Image(systemName: monitor.isMonitoring ? "stop.fill" : "play.fill")

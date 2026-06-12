@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import ServiceManagement
 
 @main
 struct keyHelperApp: App {
@@ -28,12 +29,22 @@ struct keyHelperApp: App {
                 }
             }
         }
+
+        Settings {
+            SettingsView()
+        }
     }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         GlobalKeyMonitor.shared.checkAccessibility()
+
+        // Apply dock icon preference
+        let hideDock = UserDefaults.standard.bool(forKey: "hideDockIcon")
+        if hideDock {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

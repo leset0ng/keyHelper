@@ -19,7 +19,7 @@ struct SettingsView: View {
                 }
         }
         .padding()
-        .frame(width: 420, height: 250)
+        .frame(width: 420, height: 260)
     }
 
     private var generalTab: some View {
@@ -38,24 +38,31 @@ struct SettingsView: View {
                 Toggle("Auto-start Monitoring", isOn: $autoStartMonitoring)
             } header: {
                 Text("General")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
-                HStack {
+                HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Accessibility")
                             .font(.headline)
                         Text("KeyHelper requires Accessibility permission to monitor global key events.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     }
                     Spacer()
-                    Button("Open System Settings...") {
+                    Button("Open Settings…") {
                         openAccessibilitySettings()
                     }
+                    .controlSize(.small)
                 }
+                .padding(.vertical, 4)
             } header: {
                 Text("Permissions")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

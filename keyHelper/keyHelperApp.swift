@@ -13,9 +13,10 @@ struct keyHelperApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 520, minHeight: 420)
+                .frame(minWidth: 540, minHeight: 440)
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 620, height: 520)
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About KeyHelper") {

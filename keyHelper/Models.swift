@@ -64,7 +64,7 @@ enum MacroStep: Codable, Identifiable, Equatable {
     var displayName: String {
         switch self {
         case .keyCombo(let combo):
-            return combo.name
+            return combo.displayName
         case .text(let str):
             return "Text: \"\(str)\""
         case .delay(let seconds):
@@ -125,6 +125,12 @@ struct KeyCombo: Codable, Equatable, Hashable {
         if modifiers.contains(.maskControl) { parts.append("⌃") }
         if modifiers.contains(.maskSecondaryFn) { parts.append("Fn") }
         return parts.joined()
+    }
+
+    var displayName: String {
+        let prefix = modifiersMatch
+        guard !prefix.isEmpty else { return name }
+        return name.hasPrefix(prefix) ? name : prefix + name
     }
 }
 
@@ -189,7 +195,7 @@ struct Macro: Codable, Identifiable, Equatable {
 
     var stepCount: Int { steps.count }
     var triggerDisplay: String {
-        triggers.map { $0.modifiersMatch + $0.name }.joined(separator: " / ")
+        triggers.map { $0.displayName }.joined(separator: " / ")
     }
 }
 

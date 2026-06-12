@@ -7,150 +7,50 @@ import SwiftUI
 import Carbon
 import AppKit
 
+private struct StepEditTarget: Identifiable {
+    let id = UUID()
+    let index: Int
+    let step: MacroStep
+}
+
 struct MacroEditorView: View {
     @State var macro: Macro
     let onSave: (Macro) -> Void
     let onDelete: (Macro) -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var showingStepPicker = false
-    @State private var stepToEditIndex: Int?
-    @State private var showingStepEditor = false
+    @State private var editingStep: StepEditTarget?
 
     var body: some View {
-        ZStack {
-            Color(NSColor.windowBackgroundColor).ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 20) {
-                        // Name
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label("Name", systemImage: "tag")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            TextField("Macro name", text: $macro.name)
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        // Trigger
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Label("Triggers", systemImage: "hand.tap")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Button {
-                                    macro.triggers.append(KeyCombo(keyCode: kVK_F6, modifiers: [], name: "F6"))
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title3)
-                                }
-                                .buttonStyle(.borderless)
-                            }
-
-                            if macro.triggers.isEmpty {
-                                Text("No triggers. Tap + to add.")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(.vertical, 20)
-                            } else {
-                                VStack(spacing: 6) {
-                                    ForEach(Array(macro.triggers.enumerated()), id: \.offset) { index, _ in
-                                        HStack(spacing: 8) {
-                                            KeyComboRecorder(combo: Binding(
-                                                get: { macro.triggers[index] },
-                                                set: { macro.triggers[index] = $0 }
-                                            ))
-
-                                            Button {
-                                                macro.triggers.remove(at: index)
-                                            } label: {
-                                                Image(systemName: "xmark")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.red)
-                                            }
-                                            .buttonStyle(.borderless)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Steps
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Label("Steps", systemImage: "list.number")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Button {
-                                    showingStepPicker = true
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title3)
-                                }
-                                .buttonStyle(.borderless)
-                            }
-
-                            if macro.steps.isEmpty {
-                                Text("No steps yet. Tap + to add.")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(.vertical, 20)
-                            } else {
-                                VStack(spacing: 6) {
-                                    ForEach(Array(macro.steps.enumerated()), id: \.offset) { index, step in
-                                        StepRow(
-                                            index: index + 1,
-                                            step: step,
-                                            onEdit: {
-                                                stepToEditIndex = index
-                                                showingStepEditor = true
-                                            },
-                                            onDelete: {
-                                                macro.steps.remove(at: index)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Delete Button
-                        Button(role: .destructive) {
-                            onDelete(macro)
-                        } label: {
-                            Label("Delete Macro", systemImage: "trash")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.red)
-                        .padding(.top, 20)
-
-                        Spacer(minLength: 20)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
-                }
+        Form {
+            nameSection
+            triggersSection
+            stepsSection
         }
-        .frame(minWidth: 460, minHeight: 500)
-        .navigationTitle("Edit Macro")
+        .formStyle(.grouped)
+        .padding(.top, 14)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 20)
+        }
+        .frame(minWidth: 480, minHeight: 520)
+        .navigationTitle(macro.name.isEmpty ? "New Macro" : macro.name)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(action: { dismiss() }) {
-                    Label("Cancel", systemImage: "xmark")
-                        .labelStyle(.iconOnly)
-                }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button(action: { onSave(macro) }) {
-                    Label("Save", systemImage: "checkmark")
+            ToolbarItem(placement: .automatic) {
+                Button(role: .destructive, action: { onDelete(macro) }) {
+                    Label("Delete Macro", systemImage: "trash")
                         .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .help("Delete Macro")
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button(action: { onSave(macro) }) {
+                    Label("Done", systemImage: "checkmark")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.borderedProminent)
+                .help("Done")
             }
         }
         .sheet(isPresented: $showingStepPicker) {
@@ -159,17 +59,114 @@ struct MacroEditorView: View {
                 showingStepPicker = false
             }
         }
-        .sheet(isPresented: $showingStepEditor) {
-            if let index = stepToEditIndex, index < macro.steps.count {
-                let step = macro.steps[index]
-                StepEditorSheet(step: step, onSave: { updatedStep in
-                    macro.steps[index] = updatedStep
-                    showingStepEditor = false
-                    stepToEditIndex = nil
-                })
-            }
+        .sheet(item: $editingStep) { target in
+            StepEditorSheet(step: target.step, onSave: { updatedStep in
+                if target.index < macro.steps.count {
+                    macro.steps[target.index] = updatedStep
+                }
+                editingStep = nil
+            })
         }
     }
+
+    // MARK: - Sections
+
+    private var nameSection: some View {
+        Section {
+            TextField("Macro Name", text: $macro.name)
+                .font(.body)
+        } header: {
+            Text("Name")
+        }
+    }
+
+    private var triggersSection: some View {
+        Section {
+            if macro.triggers.isEmpty {
+                Text("No triggers configured")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 12)
+            } else {
+                ForEach(Array(macro.triggers.enumerated()), id: \.offset) { index, _ in
+                    HStack(spacing: 8) {
+                        KeyComboRecorder(combo: Binding(
+                            get: { macro.triggers[index] },
+                            set: { macro.triggers[index] = $0 }
+                        ))
+
+                        Button {
+                            macro.triggers.remove(at: index)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+
+            Button {
+                macro.triggers.append(KeyCombo(keyCode: kVK_F6, modifiers: [], name: "F6"))
+            } label: {
+                Label("Add Trigger", systemImage: "plus")
+                    .font(.callout)
+            }
+            .buttonStyle(.borderless)
+            .padding(.top, 4)
+        } header: {
+            Text("Triggers")
+        } footer: {
+            Text("Press the recorded key combination to activate this macro.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var stepsSection: some View {
+        Section {
+            if macro.steps.isEmpty {
+                Text("No steps yet")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 16)
+            } else {
+                ForEach(Array(macro.steps.enumerated()), id: \.offset) { index, step in
+                    StepRow(
+                        index: index + 1,
+                        step: step,
+                        onEdit: {
+                            editingStep = StepEditTarget(index: index, step: step)
+                        },
+                        onDelete: {
+                            macro.steps.remove(at: index)
+                        }
+                    )
+                }
+            }
+
+            Button {
+                showingStepPicker = true
+            } label: {
+                Label("Add Step", systemImage: "plus")
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .padding(.top, 4)
+        } header: {
+            Text("Steps")
+        } footer: {
+            Text("Steps execute in order when the trigger is pressed.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
 }
 
 // MARK: - Key Combo Recorder
@@ -180,36 +177,36 @@ struct KeyComboRecorder: View {
     @State private var localMonitor: Any?
 
     var body: some View {
-        HStack {
-            Text(isRecording ? "Press a key combination..." : combo.modifiersMatch + combo.name)
+        HStack(spacing: 8) {
+            Text(isRecording ? "Press a key combination…" : combo.displayName)
                 .font(.system(.body, design: .monospaced))
                 .foregroundStyle(isRecording ? .secondary : .primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(isRecording ? Color.red.opacity(0.08) : Color(NSColor.controlBackgroundColor))
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isRecording ? Color.red.opacity(0.08) : Color(NSColor.textBackgroundColor))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isRecording ? Color.red.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(isRecording ? Color.red.opacity(0.4) : Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
                 )
+                .contentShape(Rectangle())
                 .onTapGesture {
                     toggleRecording()
                 }
 
             Button(action: toggleRecording) {
                 Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
-                    .font(.title2)
-                    .foregroundStyle(isRecording ? .red : Color.accentColor)
+                    .font(.title3)
+                    .foregroundStyle(isRecording ? .red : .accentColor)
+                    .symbolRenderingMode(.hierarchical)
             }
             .buttonStyle(.borderless)
         }
         .onAppear {
-            if isRecording {
-                startLocalMonitor()
-            }
+            if isRecording { startLocalMonitor() }
         }
         .onDisappear {
             stopLocalMonitor()
@@ -262,47 +259,65 @@ struct StepRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         HStack(spacing: 10) {
             Text("\(index)")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(Color.secondary.opacity(0.1)))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(Color.accentColor))
 
             Image(systemName: step.icon)
-                .font(.body)
-                .foregroundStyle(.tint)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.accentColor)
                 .frame(width: 20)
+                .symbolRenderingMode(.hierarchical)
 
             Text(step.displayName)
                 .font(.body)
                 .lineLimit(1)
+                .foregroundStyle(.primary)
 
             Spacer()
 
-            Button(action: onEdit) {
-                Image(systemName: "pencil")
-                    .font(.caption)
-            }
-            .buttonStyle(.borderless)
+            HStack(spacing: 4) {
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .opacity(isHovered ? 1 : 0)
 
-            Button(action: onDelete) {
-                Image(systemName: "xmark")
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                Button(action: onDelete) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .opacity(isHovered ? 1 : 0.6)
             }
-            .buttonStyle(.borderless)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(Color(NSColor.controlBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 0.5)
+                )
         )
         .contentShape(Rectangle())
         .onTapGesture {
             onEdit()
+        }
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.12)) {
+                isHovered = hovering
+            }
         }
     }
 }
@@ -319,27 +334,18 @@ struct StepPickerSheet: View {
                 .font(.headline)
                 .padding(.top, 16)
 
-            VStack(spacing: 8) {
-                Button {
+            VStack(spacing: 6) {
+                stepButton(icon: "keyboard", title: "Key Combination", subtitle: "Simulate a keyboard shortcut") {
                     onSelect(.keyCombo(KeyCombo(keyCode: kVK_ANSI_A, modifiers: [], name: "A")))
-                } label: {
-                    stepButtonLabel(icon: "keyboard", title: "Key Combination", subtitle: "Simulate a keyboard shortcut")
                 }
-                .buttonStyle(.plain)
 
-                Button {
+                stepButton(icon: "textformat", title: "Text Input", subtitle: "Type a string of text") {
                     onSelect(.text(""))
-                } label: {
-                    stepButtonLabel(icon: "textformat", title: "Text Input", subtitle: "Type a string of text")
                 }
-                .buttonStyle(.plain)
 
-                Button {
+                stepButton(icon: "timer", title: "Delay", subtitle: "Wait for a specified time") {
                     onSelect(.delay(0.1))
-                } label: {
-                    stepButtonLabel(icon: "timer", title: "Delay", subtitle: "Wait for a specified time")
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
 
@@ -353,34 +359,43 @@ struct StepPickerSheet: View {
         .frame(width: 320)
     }
 
-    private func stepButtonLabel(icon: String, title: String, subtitle: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(width: 32, height: 32)
+    private func stepButton(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.accentColor)
+                    .frame(width: 32, height: 32)
+                    .symbolRenderingMode(.hierarchical)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.bold())
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.forward")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 0.5)
+                    )
+            )
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
     }
 }
 
@@ -391,9 +406,29 @@ struct StepEditorSheet: View {
     let onSave: (MacroStep) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    @State private var textValue: String = ""
-    @State private var delayValue: Double = 0.1
-    @State private var keyCombo: KeyCombo = KeyCombo(keyCode: kVK_ANSI_A, modifiers: [], name: "A")
+    @State private var textValue: String
+    @State private var delayValue: Double
+    @State private var keyCombo: KeyCombo
+
+    init(step: MacroStep, onSave: @escaping (MacroStep) -> Void) {
+        self.step = step
+        self.onSave = onSave
+
+        switch step {
+        case .keyCombo(let combo):
+            _keyCombo = State(initialValue: combo)
+            _textValue = State(initialValue: "")
+            _delayValue = State(initialValue: 0.1)
+        case .text(let text):
+            _keyCombo = State(initialValue: KeyCombo(keyCode: kVK_ANSI_A, modifiers: [], name: "A"))
+            _textValue = State(initialValue: text)
+            _delayValue = State(initialValue: 0.1)
+        case .delay(let seconds):
+            _keyCombo = State(initialValue: KeyCombo(keyCode: kVK_ANSI_A, modifiers: [], name: "A"))
+            _textValue = State(initialValue: "")
+            _delayValue = State(initialValue: seconds)
+        }
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -401,47 +436,50 @@ struct StepEditorSheet: View {
                 .font(.headline)
                 .padding(.top, 16)
 
-            switch step {
-            case .keyCombo(let combo):
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Key Combination")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    VirtualKeyboardView(combo: $keyCombo)
-                }
-                .padding(.horizontal, 16)
-                .onAppear {
-                    keyCombo = combo
-                }
-
-            case .text(let str):
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Text to Type")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    TextField("Enter text", text: $textValue)
-                        .textFieldStyle(.roundedBorder)
-                }
-                .padding(.horizontal, 16)
-                .onAppear {
-                    textValue = str
-                }
-
-            case .delay(let seconds):
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Delay (seconds)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    HStack {
-                        Slider(value: $delayValue, in: 0.01...2.0, step: 0.01)
-                        Text(String(format: "%.2fs", delayValue))
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 60)
+            Group {
+                switch step {
+                case .keyCombo(let combo):
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Key Combination")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        VirtualKeyboardView(combo: $keyCombo)
                     }
-                }
-                .padding(.horizontal, 16)
-                .onAppear {
-                    delayValue = seconds
+                    .padding(.horizontal, 16)
+                    .onAppear {
+                        keyCombo = combo
+                    }
+
+                case .text(let str):
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Text to Type")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        TextField("Enter text", text: $textValue)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    .padding(.horizontal, 16)
+                    .onAppear {
+                        textValue = str
+                    }
+
+                case .delay(let seconds):
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Delay (seconds)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        HStack {
+                            Slider(value: $delayValue, in: 0.01...2.0, step: 0.01)
+                            Text(String(format: "%.2f s", delayValue))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 64)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .onAppear {
+                        delayValue = seconds
+                    }
                 }
             }
 
@@ -593,7 +631,7 @@ struct VirtualKeyboardView: View {
         VStack(spacing: 8) {
             // Selected combo display
             HStack {
-                Text(combo.name.isEmpty ? "Press a key..." : combo.name)
+                Text(combo.name.isEmpty ? "Press a key…" : combo.displayName)
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(combo.name.isEmpty ? .secondary : .primary)
                 Spacer()
@@ -601,8 +639,12 @@ struct VirtualKeyboardView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(NSColor.controlBackgroundColor))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(NSColor.textBackgroundColor))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 0.5)
+                    )
             )
 
             // Keyboard
@@ -632,9 +674,15 @@ struct VirtualKeyboardView: View {
             }
             .padding(8)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color(NSColor.underPageBackgroundColor))
             )
+        }
+        .onAppear {
+            activeModifiers = combo.modifiers
+        }
+        .onChange(of: combo.modifiers.rawValue) { _, _ in
+            activeModifiers = combo.modifiers
         }
     }
 
@@ -677,14 +725,14 @@ struct KeyButton: View {
                 .font(.system(size: 11, weight: .medium))
                 .frame(width: baseWidth * key.widthMultiplier, height: height)
                 .background(
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 0.5)
+                        )
                 )
                 .foregroundStyle(isSelected ? .white : .primary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
-                )
         }
         .buttonStyle(.plain)
     }

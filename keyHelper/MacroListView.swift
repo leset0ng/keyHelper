@@ -137,7 +137,8 @@ struct MacroListView: View {
                         showingEditor = true
                     }
                 )
-                .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                .frame(maxWidth: .infinity)
+                .listRowInsets(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
@@ -151,19 +152,21 @@ struct MacroListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Spacer()
             Image(systemName: "keyboard.badge.ellipsis")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary.opacity(0.4))
-            Text("No Macros Yet")
-                .font(.title3.bold())
+                .font(.system(size: 56, weight: .light))
+                .foregroundStyle(.tertiary)
+                .symbolRenderingMode(.hierarchical)
+            Text("No Macros")
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("Click + to create your first macro")
+            Text("Click the + button to create your first macro")
                 .font(.callout)
-                .foregroundStyle(.secondary.opacity(0.7))
+                .foregroundStyle(.tertiary)
             Spacer()
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func toggleGlobalMonitoring() {
@@ -207,56 +210,81 @@ struct MacroRow: View {
     @Binding var isOn: Bool
     let onTap: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         HStack(spacing: 12) {
             Toggle("", isOn: $isOn)
                 .toggleStyle(.switch)
                 .labelsHidden()
-                .scaleEffect(0.8)
+                .scaleEffect(0.85)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(macro.name)
-                    .font(.system(.body, design: .default).weight(.medium))
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
 
                 HStack(spacing: 6) {
-                    HStack(spacing: 2) {
-                        Image(systemName: "hand.tap")
-                            .font(.caption2)
-                        Text(macro.triggerDisplay)
-                            .font(.caption)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(4)
+                    TriggerBadge(text: macro.triggerDisplay)
 
                     Text("·")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
 
                     Text("\(macro.stepCount) step\(macro.stepCount == 1 ? "" : "s")")
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
 
             Spacer()
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.secondary.opacity(0.5))
+            Image(systemName: "chevron.forward")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .opacity(isHovered ? 1 : 0.6)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(NSColor.controlBackgroundColor))
-                .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.03), radius: 1, x: 0, y: 0.5)
         )
         .contentShape(Rectangle())
         .onTapGesture {
             onTap()
         }
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Trigger Badge
+
+struct TriggerBadge: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "hand.tap")
+                .font(.system(size: 9, weight: .medium))
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Color.accentColor.opacity(0.1))
+        .foregroundColor(.accentColor)
+        .clipShape(Capsule())
     }
 }
 
